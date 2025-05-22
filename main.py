@@ -1,20 +1,31 @@
 import schedule
-import time
 import subprocess
+import time
+from datetime import datetime, timedelta
 
-def run_market_scan():
-    print("Running signal generator at 6 PM...")
-    subprocess.call(["python", "signal_generator.py"])
+# Convert IST to UTC (Render uses UTC)
+def ist_to_utc(hour, minute=0):
+    utc_offset = timedelta(hours=5, minutes=30)
+    now_ist = datetime.now()
+    run_time_ist = now_ist.replace(hour=hour, minute=minute, second=0, microsecond=0)
+    run_time_utc = run_time_ist - utc_offset
+    return run_time_utc.hour, run_time_utc.minute
 
-def run_trade_execution():
-    print("Running trade executor at 9:15 AM...")
-    subprocess.call(["python", "auto_trade_executor.py"])
+# Wrapper to run any script
+def run_script(script_name):
+    print(f"[{datetime.now()}] Running: {script_name}")
+    subprocess.run(["python", script_name])
 
-# Schedule the tasks
-schedule.every().day.at("18:00").do(run_market_scan)       # 6:00 PM IST
-schedule.every().day.at("09:15").do(run_trade_execution)   # 9:15 AM IST
+# Schedule 6:00 PM IST → signal_generator.py
+h1, m1 = ist_to_utc(18, 0)
+schedule.every().day.at(f"{h1:02d}:{m1:02d}").do(run_script, script_name="signal_generator.py")
 
-# Loop forever to run the schedule
+# Schedule 9:15 AM IST → auto_trade_executor.py
+h2, m2 = ist_to_utc(9, 15)
+schedule.every().day.at(f"{h2:02d}:{m2:02d}").do(run_script, script_name="auto_trade_executor.py")
+
+print("✅ Scheduler started. Waiting for trigger times...")
+
 while True:
     schedule.run_pending()
-    time.sleep(60)
+    time.sleep(30)
